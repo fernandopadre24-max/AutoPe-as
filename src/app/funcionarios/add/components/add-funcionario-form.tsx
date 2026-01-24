@@ -2,6 +2,8 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,7 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useData } from '@/lib/data';
 import { formatPhoneNumber } from '@/lib/utils';
@@ -34,13 +35,11 @@ const formSchema = z.object({
 });
 
 function SubmitButton() {
-  const { pending } = useForm({
-    resolver: zodResolver(formSchema),
-  });
+  const [isLoading, setIsLoading] = useState(false);
 
   return (
-    <Button type="submit" disabled={pending}>
-      {pending ? <Loader2 className="animate-spin" /> : 'Salvar Funcionário'}
+    <Button type="submit" disabled={isLoading}>
+      {isLoading ? <Loader2 className="animate-spin" /> : 'Salvar Funcionário'}
     </Button>
   );
 }
@@ -82,7 +81,6 @@ export function AddFuncionarioForm() {
         title: 'Erro',
         description: 'Não foi possível adicionar o funcionário.',
       });
-      console.error('Error adding employee:', error);
     }
   }
 

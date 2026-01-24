@@ -28,7 +28,7 @@ import Link from 'next/link';
 import { useData } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
-import { formatPhoneNumber } from '@/lib/utils';
+import { formatPhoneNumber, formatCPF } from '@/lib/utils';
 
 type ClientesTableProps = {
   data: Customer[];
@@ -75,6 +75,11 @@ export function ClientesTable({ data }: ClientesTableProps) {
       accessorKey: 'phoneNumber',
       header: 'Telefone',
       cell: ({ row }) => row.original.phoneNumber ? formatPhoneNumber(row.original.phoneNumber) : '',
+    },
+    {
+      accessorKey: 'cpf',
+      header: 'CPF',
+      cell: ({ row }) => row.original.cpf ? formatCPF(row.original.cpf) : '',
     },
     {
       accessorKey: 'address',

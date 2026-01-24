@@ -38,7 +38,7 @@ const formSchema = z.object({
   name: z
     .string()
     .min(2, { message: 'O nome do produto deve ter pelo menos 2 caracteres.' }),
-  category: z.string().min(1, { message: 'A categoria é obrigatória.' }),
+  categoryId: z.string().min(1, { message: 'A categoria é obrigatória.' }),
   supplierId: z.string().optional(),
   color: z.string().min(1, { message: 'A cor é obrigatória.' }),
   size: z.string().min(1, { message: 'O tamanho é obrigatório.' }),
@@ -47,6 +47,11 @@ const formSchema = z.object({
     .string()
     .refine((val) => !isNaN(parseInt(val, 10)) && parseInt(val, 10) >= 0, {
       message: 'Estoque deve ser um número não negativo.',
+    }),
+  minStock: z
+    .string()
+    .refine((val) => !isNaN(parseInt(val, 10)) && parseInt(val, 10) >= 0, {
+      message: 'Estoque mínimo deve ser um número não negativo.',
     }),
   purchasePrice: z
     .string()
@@ -75,7 +80,7 @@ function SubmitButton() {
 export function EditProdutoForm({ productId }: EditProdutoFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const { products, suppliers, isLoading, updateProduct } = useData();
+  const { products, suppliers, isLoading, updateProduct, categories } = useData();
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [isSuggestingPrice, setIsSuggestingPrice] = useState(false);
 
@@ -85,12 +90,13 @@ export function EditProdutoForm({ productId }: EditProdutoFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
         name: '',
-        category: '',
+        categoryId: '',
         color: '',
         size: '',
         gender: '',
         supplierId: '',
         stock: '0',
+        minStock: '5',
         purchasePrice: '0',
         salePrice: '0',
         description: '',
@@ -101,12 +107,13 @@ export function EditProdutoForm({ productId }: EditProdutoFormProps) {
     if (product) {
       form.reset({
         name: product.name,
-        category: product.category,
+        categoryId: product.categoryId || '',
         supplierId: product.supplierId,
         color: product.color,
         size: product.size,
         gender: product.gender,
         stock: String(product.stock),
+        minStock: String(product.minStock || 5),
         purchasePrice: String(product.purchasePrice),
         salePrice: String(product.salePrice),
         description: product.description,
@@ -121,9 +128,10 @@ export function EditProdutoForm({ productId }: EditProdutoFormProps) {
         id: product.id,
         sku: product.sku,
         name: values.name,
-        category: values.category,
+        categoryId: values.categoryId,
         supplierId: values.supplierId === 'none' ? undefined : values.supplierId,
         stock: Number(values.stock),
+        minStock: Number(values.minStock),
         purchasePrice: Number(values.purchasePrice),
         salePrice: Number(values.salePrice),
         description: values.description || '',
@@ -144,7 +152,6 @@ export function EditProdutoForm({ productId }: EditProdutoFormProps) {
         title: 'Erro',
         description: `Erro ao atualizar produto: ${errorMessage}`,
       });
-      console.error('Error updating product:', error);
     }
   }
 
@@ -154,7 +161,7 @@ export function EditProdutoForm({ productId }: EditProdutoFormProps) {
     try {
       const result = await generateDescriptionAction({
         productName: values.name,
-        category: values.category,
+        category: values.categoryId,
         brand: 'N/A',
         gender: values.gender,
         color: values.color,
@@ -257,13 +264,24 @@ export function EditProdutoForm({ productId }: EditProdutoFormProps) {
           />
           <FormField
             control={form.control}
-            name="category"
+            name="categoryId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Categoria</FormLabel>
-                <FormControl>
-                  <Input placeholder="Ex: Camisetas, Calças" {...field} />
-                </FormControl>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {categories.map((category: any) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -351,6 +369,22 @@ export function EditProdutoForm({ productId }: EditProdutoFormProps) {
                 <FormControl>
                   <Input type="number" placeholder="0" {...field} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="minStock"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Estoque Mínimo</FormLabel>
+                <FormControl>
+                  <Input type="number" placeholder="5" {...field} />
+                </FormControl>
+                <FormDescription>
+                  Quantidade mínima para alerta de reposição
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

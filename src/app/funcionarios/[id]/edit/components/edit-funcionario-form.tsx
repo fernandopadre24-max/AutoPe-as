@@ -100,7 +100,6 @@ export function EditFuncionarioForm({ employeeId }: EditFuncionarioFormProps) {
         title: 'Erro',
         description: 'Não foi possível atualizar os dados do funcionário.',
       });
-      console.error('Error updating employee:', error);
     }
   }
 

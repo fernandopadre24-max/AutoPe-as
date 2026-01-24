@@ -1,0 +1,12 @@
+{
+  "name": "loja2026-pdv-tauri",
+  "version": "1.0.0",
+  "description": "Loja2026 PDV - Aplicação Desktop",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri dev",
+    "dist": "tauri build",
+    "icons": "node src-tauri/scripts/build-icons.js"
+  }
+}

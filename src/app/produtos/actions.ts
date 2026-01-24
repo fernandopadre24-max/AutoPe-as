@@ -17,7 +17,6 @@ export async function generateDescriptionAction(
     const result = await generateProductDescription(input);
     return { description: result.description };
   } catch (e) {
-    console.error(e);
     return { description: null, error: 'Failed to generate description' };
   }
 }
@@ -27,7 +26,6 @@ export async function suggestPriceAction(input: SuggestOptimalPriceInput) {
     const result = await suggestOptimalPrice(input);
     return { suggestedPrice: result.suggestedPrice, reasoning: result.reasoning };
   } catch (e) {
-    console.error(e);
     return {
       suggestedPrice: null,
       reasoning: null,

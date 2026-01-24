@@ -1,12 +1,12 @@
 'use client';
 
+import React from 'react';
 import {
   SidebarHeader,
   SidebarContent,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarTrigger,
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import {
@@ -21,75 +21,108 @@ import {
   Shirt,
   Store,
   Receipt,
+  Tags,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useSidebar } from '@/components/ui/sidebar';
-import { useData } from '@/lib/data';
-import { ThemeToggleButton } from '@/components/theme-toggle-button';
 
-const menuItems = [
-  { href: '/', label: 'Início', icon: Home },
-  { href: '/pdv', label: 'PDV', icon: Store },
-  { href: '/vendas', label: 'Vendas', icon: Receipt },
-  { href: '/produtos', label: 'Produtos', icon: Shirt },
-  { href: '/clientes', label: 'Clientes', icon: Users },
-  { href: '/funcionarios', label: 'Funcionários', icon: BookUser },
-  { href: '/fornecedores', label: 'Fornecedores', icon: Truck },
-  { href: '/relatorios', label: 'Relatórios', icon: BarChart2 },
-  { href: '/calendario', label: 'Calendário', icon: Calendar },
-  { href: '/calculadora', label: 'Calculadora', icon: Calculator },
-  { href: '/configuracoes', label: 'Configurações', icon: Settings },
+const ITEM_HEIGHT = 60; // hit-area + respiro
+const TILE_SIZE = 48;   // tile 48x48 (exigido)
+const ICON_SIZE = 28;   // desenho do ícone dentro do tile
+
+type MenuItem = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  grad: [string, string];
+};
+
+const menuItems: MenuItem[] = [
+  { href: '/', label: 'Início', icon: Home, grad: ['#2563EB', '#1E40AF'] },
+  { href: '/pdv', label: 'PDV', icon: Store, grad: ['#7C3AED', '#4C1D95'] },
+  { href: '/vendas', label: 'Vendas', icon: Receipt, grad: ['#DB2777', '#831843'] },
+  { href: '/produtos', label: 'Produtos', icon: Shirt, grad: ['#F59E0B', '#92400E'] },
+  { href: '/categorias', label: 'Categorias', icon: Tags, grad: ['#EA580C', '#7C2D12'] },
+  { href: '/clientes', label: 'Clientes', icon: Users, grad: ['#10B981', '#064E3B'] },
+  { href: '/funcionarios', label: 'Funcionários', icon: BookUser, grad: ['#06B6D4', '#155E75'] },
+  { href: '/fornecedores', label: 'Fornecedores', icon: Truck, grad: ['#EF4444', '#7F1D1D'] },
+  { href: '/relatorios', label: 'Relatórios', icon: BarChart2, grad: ['#8B5CF6', '#312E81'] },
+  { href: '/configuracoes', label: 'Configurações', icon: Settings, grad: ['#64748B', '#0F172A'] },
 ];
+
+function radialGradient(a: string, b: string) {
+  return `radial-gradient(120% 120% at 30% 20%, ${a} 0%, ${b} 55%, rgba(255,255,255,0.10) 100%)`;
+}
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { state } = useSidebar();
-  const { config } = useData();
-
   const isPdvPage = pathname === '/pdv';
 
-  if (isPdvPage) {
-    return null;
-  }
+  if (isPdvPage) return null;
 
   return (
     <>
-      <SidebarHeader>
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Shirt className="h-5 w-5" />
+      {/* Sidebar tem 60px — evitar p-2 aqui (48 + 16 = 64). */}
+      <SidebarHeader className="p-0">
+        <div className="flex items-center justify-center p-1.5">
+          <div
+            className="flex items-center justify-center rounded-xl shadow-sm"
+            style={{
+              width: TILE_SIZE,
+              height: TILE_SIZE,
+              backgroundImage: radialGradient('#0EA5E9', '#1D4ED8'),
+            }}
+            aria-label="Logo"
+          >
+            <Shirt className="text-white" style={{ width: ICON_SIZE, height: ICON_SIZE }} />
           </div>
-          {state === 'expanded' && (
-            <h1 className="text-xl font-semibold font-headline truncate">
-              {config.storeName || 'Fashion Store'}
-            </h1>
-          )}
-          <div className="flex-1" />
-          <SidebarTrigger className="hidden md:flex" />
         </div>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarMenu>
-          {menuItems.map(({ href, label, icon: Icon }) => (
-            <SidebarMenuItem key={href}>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith(href) && (href !== '/' || pathname === '/')}
-                tooltip={{ children: label }}
-              >
-                <Link href={href}>
-                  <Icon />
-                  <span>{label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+
+      <SidebarContent className="pt-1">
+        <SidebarMenu className="py-2">
+          {menuItems.map(({ href, label, icon: Icon, grad }) => {
+            const isActive = pathname.startsWith(href) && (href !== '/' || pathname === '/');
+
+            return (
+              <SidebarMenuItem key={href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive}
+                  tooltip={{ children: label, side: 'right', align: 'center' }}
+                  className="justify-center"
+                  style={{ height: `${ITEM_HEIGHT}px`, width: '100%' }}
+                >
+                  <Link
+                    href={href}
+                    aria-label={label}
+                    className="flex h-full w-full items-center justify-center"
+                  >
+                    <span
+                      className={[
+                        'flex items-center justify-center rounded-xl shadow-sm',
+                        'transition-all duration-150',
+                        'hover:brightness-110 hover:scale-[1.02]',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30',
+                        isActive ? 'ring-2 ring-white/25' : '',
+                      ].join(' ')}
+                      style={{
+                        width: TILE_SIZE,
+                        height: TILE_SIZE,
+                        backgroundImage: radialGradient(grad[0], grad[1]),
+                      }}
+                    >
+                      <Icon className="text-white" style={{ width: ICON_SIZE, height: ICON_SIZE }} />
+                    </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
         </SidebarMenu>
       </SidebarContent>
-       <SidebarFooter>
-        <ThemeToggleButton />
-      </SidebarFooter>
+
+      <SidebarFooter className="p-0" />
     </>
   );
 }

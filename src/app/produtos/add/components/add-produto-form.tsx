@@ -35,12 +35,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome do produto deve ter pelo menos 2 caracteres.' }),
-  category: z.string().min(1, { message: 'A categoria é obrigatória.' }),
+  categoryId: z.string().min(1, { message: 'A categoria é obrigatória.' }),
   color: z.string().min(1, { message: 'A cor é obrigatória.' }),
   size: z.string().min(1, { message: 'O tamanho é obrigatório.' }),
   gender: z.string().min(1, { message: 'O gênero é obrigatório.' }),
   supplierId: z.string().optional(),
   stock: z.string().refine((val) => !isNaN(parseInt(val, 10)) && parseInt(val, 10) >= 0, { message: 'Estoque deve ser um número não negativo.' }),
+  minStock: z.string().refine((val) => !isNaN(parseInt(val, 10)) && parseInt(val, 10) >= 0, { message: 'Estoque mínimo deve ser um número não negativo.' }),
   purchasePrice: z.string().refine((val) => !isNaN(parseFloat(val)), { message: 'Preço de compra inválido.' }),
   salePrice: z.string().refine((val) => !isNaN(parseFloat(val)), { message: 'Preço de venda inválido.' }),
   description: z.string().optional(),
@@ -63,7 +64,7 @@ export function AddProdutoForm() {
   const searchParams = useSearchParams();
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [isSuggestingPrice, setIsSuggestingPrice] = useState(false);
-  const { addProduct, getProductById, suppliers } = useData();
+  const { addProduct, getProductById, suppliers, categories } = useData();
   
   const duplicateId = searchParams.get('duplicateId');
 
@@ -71,12 +72,13 @@ export function AddProdutoForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      category: '',
+      categoryId: '',
       color: '',
       size: '',
       gender: '',
       supplierId: '',
       stock: '0',
+      minStock: '5',
       purchasePrice: '0',
       salePrice: '0',
       description: '',
@@ -89,15 +91,16 @@ export function AddProdutoForm() {
       if (productToDuplicate) {
         form.reset({
           name: productToDuplicate.name,
-          category: productToDuplicate.category,
+          categoryId: productToDuplicate.categoryId || '',
           color: productToDuplicate.color,
           size: productToDuplicate.size,
           gender: productToDuplicate.gender,
           supplierId: productToDuplicate.supplierId,
           stock: '0', // Reset stock for new product
+          minStock: String(productToDuplicate.minStock || 5),
           purchasePrice: String(productToDuplicate.purchasePrice),
           salePrice: String(productToDuplicate.salePrice),
-          description: productToDuplicate.description,
+          description: productToDuplicate.description || '',
         });
          toast({
           title: 'Produto Duplicado',
@@ -110,11 +113,13 @@ export function AddProdutoForm() {
   async function onSubmit(values: ProdutoFormData) {
     try {
       addProduct({
+        sku: `PROD-${Date.now().toString().slice(-6)}`,
         name: values.name,
         stock: Number(values.stock),
+        minStock: Number(values.minStock || 5),
         purchasePrice: Number(values.purchasePrice),
         salePrice: Number(values.salePrice),
-        category: values.category,
+        categoryId: values.categoryId,
         supplierId: values.supplierId === 'none' ? undefined : values.supplierId,
         color: values.color,
         size: values.size,
@@ -126,7 +131,6 @@ export function AddProdutoForm() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro desconhecido.';
       toast({ variant: 'destructive', title: "Erro", description: `Erro ao criar produto: ${errorMessage}` });
-      console.error('Error creating product:', error);
     }
   }
 
@@ -134,11 +138,11 @@ export function AddProdutoForm() {
     setIsGeneratingDescription(true);
     const values = form.getValues();
     try {
-      const result = await generateDescriptionAction({
-          productName: values.name,
-          category: values.category,
-          brand: 'N/A', // You may want to add a brand field
-          gender: values.gender,
+        const result = await generateDescriptionAction({
+            productName: values.name,
+            category: values.categoryId,
+            brand: 'N/A', // You may want to add a brand field
+            gender: values.gender,
           color: values.color,
           material: 'N/A', // You may want to add a material field
           size: values.size,
@@ -219,13 +223,24 @@ export function AddProdutoForm() {
           />
           <FormField
             control={form.control}
-            name="category"
+            name="categoryId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Categoria</FormLabel>
-                 <FormControl>
-                  <Input placeholder="Ex: Camisetas, Calças" {...field} />
-                </FormControl>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {categories.map((category: any) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -313,6 +328,22 @@ export function AddProdutoForm() {
                 <FormControl>
                   <Input type="number" placeholder="0" {...field} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="minStock"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Estoque Mínimo</FormLabel>
+                <FormControl>
+                  <Input type="number" placeholder="5" {...field} />
+                </FormControl>
+                <FormDescription>
+                  Quantidade mínima para alerta de reposição
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

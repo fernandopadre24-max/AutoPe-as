@@ -59,14 +59,15 @@ export function ProdutosTable({ data, viewMode }: ProdutosTableProps) {
     pageSize: 10,
   });
   const router = useRouter();
-  const { deleteProduct } = useData();
+  const { deleteProduct, categories } = useData();
   const { toast } = useToast();
   const [productToDelete, setProductToDelete] = React.useState<Product | null>(null);
 
-  const uniqueCategories = React.useMemo(() => {
-    const categories = new Set(data.map(product => product.category));
-    return Array.from(categories);
-  }, [data]);
+  const getCategoryName = (categoryId: string | undefined) => {
+    if (!categoryId) return 'Sem categoria';
+    const category = categories.find(cat => cat.id === categoryId);
+    return category?.name || 'Categoria não encontrada';
+  };
 
   const handleDuplicate = (productId: string) => {
     router.push(`/produtos/add?duplicateId=${productId}`);
@@ -97,9 +98,22 @@ export function ProdutosTable({ data, viewMode }: ProdutosTableProps) {
       header: 'SKU',
     },
     {
-      accessorKey: 'category',
+      accessorKey: 'categoryId',
       header: 'Categoria',
-      cell: ({ row }) => <Badge variant="secondary">{row.getValue('category')}</Badge>,
+      cell: ({ row }) => {
+        const categoryId = row.getValue('categoryId') as string;
+        const category = categories.find(cat => cat.id === categoryId);
+        return category ? (
+          <Badge variant="secondary" style={{ 
+            backgroundColor: category.color + '20',
+            color: category.color 
+          }}>
+            {category.name}
+          </Badge>
+        ) : (
+          <Badge variant="secondary">Sem categoria</Badge>
+        );
+      },
     },
     {
       accessorKey: 'size',
@@ -341,16 +355,16 @@ export function ProdutosTable({ data, viewMode }: ProdutosTableProps) {
              className={filterInputColor}
             />
             <Select
-                value={(table.getColumn('category')?.getFilterValue() as string) ?? ''}
-                onValueChange={(value) => table.getColumn('category')?.setFilterValue(value === 'all' ? '' : value)}
+                value={(table.getColumn('categoryId')?.getFilterValue() as string) ?? ''}
+                onValueChange={(value) => table.getColumn('categoryId')?.setFilterValue(value === 'all' ? '' : value)}
             >
                 <SelectTrigger className={filterInputColor}>
                     <SelectValue placeholder="Filtrar por Categoria" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">Todas as Categorias</SelectItem>
-                    {uniqueCategories.map(cat => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    {categories.map(cat => (
+                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
                 </SelectContent>
             </Select>

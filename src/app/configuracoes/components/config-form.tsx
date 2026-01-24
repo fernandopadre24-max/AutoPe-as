@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { useState, useEffect } from 'react';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,13 +14,19 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useFormStatus } from 'react-dom';
 import { Loader2 } from 'lucide-react';
-import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useData } from '@/lib/data';
-import type { StoreConfig } from '@/lib/types';
+import type { StoreConfig, PixKeyType } from '@/lib/types';
 import { formatPhoneNumber } from '@/lib/utils';
 
 const formSchema = z.object({
@@ -27,6 +34,8 @@ const formSchema = z.object({
   cnpj: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
+  pixKeyType: z.enum(['email', 'cpf', 'cnpj', 'telefone', 'aleatoria']).optional(),
+  pixKeyValue: z.string().optional(),
 });
 
 function SubmitButton() {
@@ -42,22 +51,29 @@ export function ConfigForm() {
   const { toast } = useToast();
   const { config: configData, isLoading, saveConfig } = useData();
 
+
+
   const form = useForm<StoreConfig>({
+    mode: 'onChange', // Enable real-time validation
     resolver: zodResolver(formSchema),
     defaultValues: {
       storeName: '',
       cnpj: '',
       address: '',
       phone: '',
+      pixKeyType: undefined,
+      pixKeyValue: '',
     },
   });
 
   useEffect(() => {
-    if (configData) {
-      form.reset({
+    if (configData && configData.storeName) {
+      const formData = {
         ...configData,
         phone: configData.phone ? formatPhoneNumber(configData.phone) : '',
-      });
+        pixKeyType: (configData.pixKeyType || "") as any,
+      };
+      form.reset(formData);
     }
   }, [configData, form]);
 
@@ -71,14 +87,13 @@ export function ConfigForm() {
         title: 'Sucesso!',
         description: 'As configurações da loja foram atualizadas.',
       });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Não foi possível salvar as configurações.',
-      });
-      console.error('Error updating config:', error);
-    }
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro',
+          description: 'Não foi possível salvar as configurações.',
+        });
+      }
   }
 
   if (isLoading) {
@@ -152,25 +167,75 @@ export function ConfigForm() {
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Telefone</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="(00) 00000-0000" 
-                    {...field} 
-                    value={field.value || ''}
-                    onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+           <FormField
+             control={form.control}
+             name="phone"
+             render={({ field }) => (
+               <FormItem>
+                 <FormLabel>Telefone</FormLabel>
+                 <FormControl>
+                   <Input
+                     placeholder="(00) 00000-0000"
+                     {...field}
+                     value={field.value || ''}
+                     onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                   />
+                 </FormControl>
+                 <FormMessage />
+               </FormItem>
+             )}
+           />
+         </div>
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <FormField
+              control={form.control}
+              name="pixKeyType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Chave PIX</FormLabel>
+                  <FormControl>
+                    <Select key={field.value} onValueChange={field.onChange} value={field.value || ""}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo de chave PIX">
+                          {field.value === 'email' && 'E-mail'}
+                          {field.value === 'cpf' && 'CPF'}
+                          {field.value === 'cnpj' && 'CNPJ'}
+                          {field.value === 'telefone' && 'Telefone'}
+                          {field.value === 'aleatoria' && 'Chave Aleatória'}
+                          {!field.value && 'Selecione o tipo de chave PIX'}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="email">E-mail</SelectItem>
+                        <SelectItem value="cpf">CPF</SelectItem>
+                        <SelectItem value="cnpj">CNPJ</SelectItem>
+                        <SelectItem value="telefone">Telefone</SelectItem>
+                        <SelectItem value="aleatoria">Chave Aleatória</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+           <FormField
+             control={form.control}
+             name="pixKeyValue"
+             render={({ field }) => (
+               <FormItem>
+                 <FormLabel>Chave PIX</FormLabel>
+                 <FormControl>
+                   <Input
+                     placeholder="Digite a chave PIX"
+                     {...field}
+                     value={field.value || ''}
+                   />
+                 </FormControl>
+                 <FormMessage />
+               </FormItem>
+             )}
+           />
+         </div>
         <div className="flex justify-end">
           <SubmitButton />
         </div>

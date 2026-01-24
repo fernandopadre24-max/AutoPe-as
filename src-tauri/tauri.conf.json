@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json.schemastore.org/tauri-config.json",
+  "productName": "Loja2026 PDV",
+  "version": "1.0.0",
+  "identifier": "com.loja2026.pdv",
+  "build": {
+    "beforeBuildCommand": null,
+    "beforeDevCommand": null,
+    "devUrl": "http://localhost:9002",
+    "frontendDist": null
+  },
+  "app": {
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "title": "Loja2026 PDV",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "resources": [],
+    "targets": "all"
+  },
+  "plugins": {}
+}

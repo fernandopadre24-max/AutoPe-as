@@ -25,6 +25,18 @@ import { EmployeeLoginDialog } from './components/employee-login-dialog';
 import { useData } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CashPaymentDialog } from './components/cash-payment-dialog';
+import { PixPaymentDialog } from '@/components/pix-payment-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Calculator, Keyboard, MousePointer, DollarSign, Package, User, CreditCard, X, Search, ShoppingCart, Loader2, CheckCircle } from 'lucide-react';
+import { CalculatorModal } from './components/calculator-modal';
+import { InstructionsModal } from './components/instructions-modal';
+import { NFeEmissionDialog } from './components/nfe-emission-dialog';
 
 type CartItem = {
   product: Product;
@@ -59,40 +71,71 @@ export default function PdvPage() {
   const [isFinalizeSaleDialogOpen, setIsFinalizeSaleDialogOpen] =
     useState(false);
   const [isCashPaymentDialogOpen, setIsCashPaymentDialogOpen] = useState(false);
+  const [isPixPaymentDialogOpen, setIsPixPaymentDialogOpen] = useState(false);
   const [saleType, setSaleType] = useState<'prazo' | 'parcelado'>('prazo');
+  const [isInstructionsModalOpen, setIsInstructionsModalOpen] = useState(false);
+  const [isCalculatorModalOpen, setIsCalculatorModalOpen] = useState(false);
+  const [isSearchingProduct, setIsSearchingProduct] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isNFeDialogOpen, setIsNFeDialogOpen] = useState(false);
+  const [lastNFeResult, setLastNFeResult] = useState<any>(null);
 
   const filteredProducts = useMemo(() => {
     if (searchTerm && allProductsData) {
-      return allProductsData.filter(
+      setIsSearchingProduct(true);
+      const filtered = allProductsData.filter(
         (product) =>
           product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
       );
+      setIsSearchingProduct(false);
+      return filtered;
     }
     return [];
   }, [searchTerm, allProductsData]);
 
-  const handleAddItemToCart = (product: Product) => {
+  const handleAddItemToCart = async (product: Product) => {
     if (!product) return;
 
-    const existingItem = cartItems.find((item) => item.product.id === product.id);
+    setIsAddingToCart(true);
+    
+    try {
+      // Simulate processing time for better UX
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-    if (existingItem) {
-      setCartItems(
-        cartItems.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        )
-      );
-    } else {
-      setCartItems([...cartItems, { product, quantity, unit, discount: 0 }]);
+      const existingItem = cartItems.find((item) => item.product.id === product.id);
+
+      if (existingItem) {
+        setCartItems(
+          cartItems.map((item) =>
+            item.product.id === product.id
+              ? { ...item, quantity: item.quantity + quantity }
+              : item
+          )
+        );
+      } else {
+        setCartItems([...cartItems, { product, quantity, unit, discount: 0 }]);
+      }
+      
+      setLastAction(`✓ Adicionado: ${quantity}x ${product.name}`);
+      setSearchTerm('');
+      setSelectedItem(null);
+      setQuantity(1);
+      setUnit('UN');
+      
+      toast({
+        title: 'Produto Adicionado',
+        description: `${product.name} adicionado ao carrinho.`,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao Adicionar',
+        description: 'Não foi possível adicionar o produto ao carrinho.',
+      });
+    } finally {
+      setIsAddingToCart(false);
     }
-    setLastAction(`Adicionado: ${quantity}x ${product.name}`);
-    setSearchTerm('');
-    setSelectedItem(null);
-    setQuantity(1);
-    setUnit('UN');
   };
 
   const handleSelectSearchedItem = (product: Product) => {
@@ -101,6 +144,7 @@ export default function PdvPage() {
     if (product.size) {
       setUnit(product.size);
     }
+    setLastAction(`Produto selecionado: ${product.name}`);
     document.getElementById('item-search')?.focus();
   };
 
@@ -157,15 +201,10 @@ export default function PdvPage() {
         setIsCashPaymentDialogOpen(true);
         return;
       }
-  
-      const defaultCustomer = allCustomersData.find(c => c.email === 'consumidor@final.com') || 
-                              { id: 'default', firstName: 'Consumidor', lastName: 'Final', email: 'consumidor@final.com', phoneNumber: '', address: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()};
-  
-      finishSale({
-          customer: defaultCustomer,
-          installments: 1,
-          paymentMethod: paymentMethod,
-      });
+      if (paymentMethod === 'PIX') {
+        setIsPixPaymentDialogOpen(true);
+        return;
+      }
   }
 
   useEffect(() => {
@@ -239,7 +278,7 @@ export default function PdvPage() {
     return cartItems.reduce((acc, item) => acc + item.quantity, 0);
   }, [cartItems]);
 
-  const finishSale = (
+  const finishSale = async (
     details: FinalizeSaleDetails
   ) => {
     if (cartItems.length === 0) {
@@ -275,22 +314,47 @@ export default function PdvPage() {
       cardNumber: details.cardNumber,
     };
 
-    addSale(saleData);
+    try {
+      await addSale(saleData);
 
-    let description = `Total de ${formatCurrency(
-        subtotal
-    )} em ${totalItems} itens.`;
+      let description = `Total de ${formatCurrency(
+          subtotal
+      )} em ${totalItems} itens.`;
 
-    description += ` Cliente: ${details.customer.firstName} ${details.customer.lastName}.`;
-    description += ` Pagamento: ${details.paymentMethod}${details.installments > 1 ? ` em ${details.installments}x` : ''}.`;
-    
-    toast({
-        title: 'Venda Finalizada!',
-        description: description,
-    });
+      description += ` Cliente: ${details.customer.firstName} ${details.customer.lastName}.`;
+      description += ` Pagamento: ${details.paymentMethod}${details.installments > 1 ? ` em ${details.installments}x` : ''}.`;
 
-    resetSaleState();
-    setLastAction('Venda finalizada. Caixa livre.');
+      // Perguntar sobre NF-e após venda finalizada com sucesso
+      setTimeout(() => {
+        toast({
+          title: 'Deseja emitir NF-e?',
+          description: 'Clique em "Emitir NF-e" para gerar a nota fiscal desta venda.',
+          action: (
+            <Button 
+              size="sm" 
+              onClick={() => setIsNFeDialogOpen(true)}
+              className="ml-2"
+            >
+              Emitir NF-e
+            </Button>
+          ),
+        });
+      }, 1000);
+
+      toast({
+          title: 'Venda Finalizada!',
+          description: description,
+      });
+
+      resetSaleState();
+      setLastAction('Venda finalizada. Caixa livre.');
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao Criar Venda',
+        description: 'Não foi possível finalizar a venda. Tente novamente.',
+      });
+    }
   };
 
   const resetSaleState = () => {
@@ -371,8 +435,8 @@ export default function PdvPage() {
         subtotal={subtotal}
         customers={allCustomersData || []}
         saleType={saleType}
-        onConfirm={(details) => {
-          finishSale(details);
+        onConfirm={async (details) => {
+          await finishSale(details);
           setIsFinalizeSaleDialogOpen(false);
         }}
       />
@@ -380,10 +444,10 @@ export default function PdvPage() {
         isOpen={isCashPaymentDialogOpen}
         onOpenChange={setIsCashPaymentDialogOpen}
         total={subtotal}
-        onConfirm={(amountPaid) => {
-          const defaultCustomer = allCustomersData.find(c => c.email === 'consumidor@final.com') || 
+        onConfirm={async (amountPaid) => {
+          const defaultCustomer = allCustomersData.find(c => c.email === 'consumidor@final.com') ||
                                   { id: 'default', firstName: 'Consumidor', lastName: 'Final', email: 'consumidor@final.com', phoneNumber: '', address: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()};
-          finishSale({
+          await finishSale({
               customer: defaultCustomer,
               installments: 1,
               paymentMethod: 'Dinheiro',
@@ -394,7 +458,26 @@ export default function PdvPage() {
             description: `Valor pago: ${formatCurrency(amountPaid)}. Troco: ${formatCurrency(amountPaid - subtotal)}.`,
           });
         }}
-       />
+        />
+        <PixPaymentDialog
+          isOpen={isPixPaymentDialogOpen}
+          onOpenChange={setIsPixPaymentDialogOpen}
+          total={subtotal}
+          pixKeyType={config.pixKeyType}
+          pixKeyValue={config.pixKeyValue}
+          storeName={config.storeName}
+          storeCity={config.address?.split(',')[1]?.trim() || 'Cidade'}
+          onConfirm={async () => {
+            const defaultCustomer = allCustomersData.find(c => c.email === 'consumidor@final.com') ||
+                                    { id: 'default', firstName: 'Consumidor', lastName: 'Final', email: 'consumidor@final.com', phoneNumber: '', address: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()};
+            await finishSale({
+                customer: defaultCustomer,
+                installments: 1,
+                paymentMethod: 'PIX',
+            });
+            setIsPixPaymentDialogOpen(false);
+          }}
+        />
       <div className="flex h-screen w-full flex-col bg-slate-100 p-2 font-mono text-sm">
         {/* Top Bar */}
         <div className="relative flex items-center justify-between gap-4 rounded-t-lg bg-blue-800 p-2 text-white">
@@ -402,18 +485,26 @@ export default function PdvPage() {
             <Label htmlFor="item-search">
               F6 - DESCRIÇÃO/CÓDIGO ITEM OU CÓDIGO DE BARRAS
             </Label>
-            <Input
-              id="item-search"
-              className="flex-1 bg-white text-black"
-              placeholder="Digite para buscar um produto..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setSelectedItem(null);
-              }}
-              onKeyDown={handleSearchKeyDown}
-              autoComplete="off"
-            />
+            <div className="relative flex-1">
+              <Input
+                id="item-search"
+                className="flex-1 bg-white text-black pr-10"
+                placeholder="Digite para buscar um produto..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setSelectedItem(null);
+                }}
+                onKeyDown={handleSearchKeyDown}
+                autoComplete="off"
+              />
+              {isSearchingProduct && (
+                <Loader2 className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-blue-600" />
+              )}
+              {!isSearchingProduct && searchTerm && filteredProducts.length > 0 && (
+                <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-600" />
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Label htmlFor="quantity">QUANTIDADE</Label>
@@ -446,14 +537,28 @@ export default function PdvPage() {
             </Select>
           </div>
           {filteredProducts.length > 0 && (
-            <div className="absolute top-full left-0 z-10 w-1/2 bg-white border rounded-md shadow-lg mt-1">
+            <div className="absolute top-full left-0 z-10 w-1/2 bg-white border rounded-md shadow-lg mt-1 max-h-64 overflow-y-auto">
               {filteredProducts.map((product) => (
                 <div
                   key={product.id}
-                  className="p-2 hover:bg-gray-200 cursor-pointer text-black"
+                  className="p-3 hover:bg-blue-50 cursor-pointer text-black border-b border-gray-100 transition-colors duration-150 flex items-center justify-between group"
                   onClick={() => handleSelectSearchedItem(product)}
                 >
-                  ({product.sku}) {product.name} - {formatCurrency(product.salePrice)}
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <span className="font-medium">{product.name}</span>
+                      <div className="text-xs text-gray-500">
+                        SKU: {product.sku} | Estoque: {product.stock || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-green-600">{formatCurrency(product.salePrice)}</div>
+                    <div className="text-xs text-gray-400">
+                        {product.category && `• ${product.category}`}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -487,24 +592,43 @@ export default function PdvPage() {
                   <span className="text-right">VL ITEM</span>
                 </div>
               <ScrollArea className="h-[calc(100vh_-_450px)]">
-                {cartItems.map((item, index) => (
-                  <div key={item.product.id} className="py-1 border-b border-dashed border-gray-200">
-                    <div className="grid grid-cols-[auto_auto_1fr_auto] gap-x-2">
-                        <span>{(index + 1).toString().padStart(3, '0')}</span>
-                        <span>{item.product.sku}</span>
-                        <span className="truncate">{item.product.name}</span>
-                        <span className="text-right">{formatCurrency(item.product.salePrice * item.quantity - item.discount)}</span>
-                    </div>
-                    <div className="grid grid-cols-[1fr_auto] gap-x-2">
-                      <span className="pl-16">{item.quantity}{item.unit} X {formatCurrency(item.product.salePrice)}</span>
-                      <span className="text-right font-bold">SUBTOTAL R$ {formatCurrency(item.product.salePrice * item.quantity - item.discount)}</span>
-                    </div>
+                {cartItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+                    <ShoppingCart className="h-12 w-12 mb-2" />
+                    <p className="text-sm">Carrinho vazio</p>
+                    <p className="text-xs">Adicione produtos para iniciar a venda</p>
                   </div>
-                ))}
+                ) : (
+                  cartItems.map((item, index) => (
+                    <div key={item.product.id} className="py-2 border-b border-dashed border-gray-200 hover:bg-yellow-50 transition-colors duration-150">
+                      <div className="grid grid-cols-[auto_auto_1fr_auto] gap-x-2 items-center">
+                          <span className="font-mono text-xs bg-blue-100 px-1 rounded">{(index + 1).toString().padStart(3, '0')}</span>
+                          <span className="font-mono text-xs text-gray-600">{item.product.sku}</span>
+                          <span className="truncate font-medium">{item.product.name}</span>
+                          <span className="text-right font-bold">{formatCurrency(item.product.salePrice * item.quantity - item.discount)}</span>
+                      </div>
+                      <div className="grid grid-cols-[1fr_auto] gap-x-2 mt-1">
+                        <span className="pl-16 text-xs text-gray-600">
+                          {item.quantity}{item.unit} X {formatCurrency(item.product.salePrice)}
+                        </span>
+                        <span className="text-right font-bold text-green-600 text-sm">
+                          SUBTOTAL {formatCurrency(item.product.salePrice * item.quantity - item.discount)}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </ScrollArea>
             </div>
-            <div className="bg-blue-800 p-2 text-center font-bold text-white">
-              <p>{lastAction}</p>
+            <div className={`p-2 text-center font-bold transition-all duration-300 ${
+              lastAction.includes('✓') ? 'bg-green-600 text-white' : 
+              lastAction.includes('cancel') || lastAction.includes('erro') ? 'bg-red-600 text-white' : 
+              'bg-blue-800 text-white'
+            }`}>
+              <div className="flex items-center justify-center gap-2">
+                {isAddingToCart && <Loader2 className="h-4 w-4 animate-spin" />}
+                <p>{lastAction}</p>
+              </div>
             </div>
             <div className="flex justify-between bg-blue-700 p-2 text-white">
               <span>
@@ -540,92 +664,142 @@ export default function PdvPage() {
               <Button
                 size="sm"
                 className="bg-blue-500 text-white"
-                onClick={() =>
-                  showInfoToast('Instruções', 'Função não implementada.')
-                }
+                onClick={() => setIsInstructionsModalOpen(true)}
               >
                 INSTRUÇÕES
               </Button>
-               <Button size="sm" className="bg-blue-500 text-white" asChild>
-                  <a href="/calculadora" target="_blank" rel="noopener noreferrer">
-                    CALCULADORA - F12
-                  </a>
+               <Button 
+                 size="sm" 
+                 className="bg-blue-500 text-white"
+                 onClick={() => setIsCalculatorModalOpen(true)}
+               >
+                  CALCULADORA - F12
                 </Button>
             </div>
           </div>
 
           {/* Middle Panel - Totals */}
           <div className="flex w-1/4 flex-col justify-between bg-blue-700 p-4 text-white">
-            <div className="space-y-4">
+            <div className="space-y-3">
               <InfoBox
                 label="VALOR UNITÁRIO:"
-                value={formatCurrency(selectedItem?.salePrice)}
+                value={formatCurrency(selectedItem?.salePrice || 0)}
               />
-              <InfoBox label="QUANTIDADE:" value={`${quantity} ${unit}`} />
+              <InfoBox 
+                label="QUANTIDADE:" 
+                value={`${isAddingToCart ? '...' : quantity} ${unit}`} 
+              />
               <InfoBox
-                label="SUBTOTAL:"
+                label="SUBTOTAL ITEM:"
                 value={formatCurrency(
                   selectedItem ? selectedItem.salePrice * quantity : 0
                 )}
               />
               <InfoBox
-                label="CÓDIGO DE BARRAS:"
-                value={selectedItem?.sku || 'N/A'}
+                label="CÓDIGO BARRAS:"
+                value={selectedItem?.sku || '---'}
                 smallText
               />
               <InfoBox
-                label="CÓDIGO DE CADASTRO:"
-                value={selectedItem?.id || 'N/A'}
+                label="CÓDIGO CADASTRO:"
+                value={selectedItem?.id?.slice(-8) || '---'}
                 smallText
               />
+              {selectedItem && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mx-auto mb-1" />
+                  <p className="text-xs text-blue-700 font-medium">Produto Selecionado</p>
+                </div>
+              )}
             </div>
             <div className="mt-4">
-              <Card className="bg-blue-800 text-white">
-                <CardHeader className="p-2 text-center">
-                  <CardTitle className="text-lg">VALOR TOTAL DA VENDA</CardTitle>
+              <Card className={`${cartItems.length > 0 ? 'bg-gradient-to-br from-blue-600 to-blue-800' : 'bg-gray-400'} text-white transition-all duration-300`}>
+                <CardHeader className="p-3 text-center">
+                  <CardTitle className="text-lg flex items-center justify-center gap-2">
+                    <ShoppingCart className="h-5 w-5" />
+                    VALOR TOTAL DA VENDA
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="text-center">
-                  <p className="text-5xl font-bold">
+                <CardContent className="text-center pb-3">
+                  <p className="text-4xl font-bold">
                     {formatCurrency(subtotal)}
                   </p>
+                  {cartItems.length > 0 && (
+                    <p className="text-xs mt-1 text-blue-100">
+                      {cartItems.length} {cartItems.length === 1 ? 'item' : 'itens'}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
+              
+              {cartItems.length === 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center mt-3">
+                  <p className="text-xs text-yellow-700">
+                    <Search className="h-3 w-3 inline mr-1" />
+                    Busque produtos para adicionar ao carrinho
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Right Panel - Actions */}
-          <div className="flex w-1/4 flex-col justify-between bg-slate-200 p-4">
+          <div className="flex w-1/4 flex-col justify-between bg-gradient-to-b from-blue-50 to-blue-100 p-4 border-l-2 border-blue-200">
             <div>
-              <div className="mb-2 rounded-md border border-blue-800 bg-white p-2">
-                <p className="font-bold text-blue-800">
+              <div className="mb-2 rounded-lg border-2 border-blue-500 bg-gradient-to-r from-blue-100 to-blue-50 p-3 shadow-md">
+                <p className="font-bold text-blue-900 flex items-center gap-2">
+                  <Package className="h-4 w-4" />
                   PDV FASHION STORE
                 </p>
-                <Input
-                  className="mt-1"
-                  placeholder="Vendedor(a)"
-                  value={`${authenticatedEmployee.firstName} ${authenticatedEmployee.lastName}`}
-                  readOnly
-                />
+              <Input
+                className="mt-1 bg-white border-blue-300 focus:border-blue-500 focus:ring-blue-200 text-blue-900 placeholder-blue-400"
+                placeholder="Vendedor(a)"
+                value={`${authenticatedEmployee.firstName} ${authenticatedEmployee.lastName}`}
+                readOnly
+              />
               </div>
               <div className="space-y-2">
-                <ActionButton onClick={() => handleSimplePayment('Dinheiro')}>
+                <ActionButton 
+                  onClick={() => handleSimplePayment('Dinheiro')}
+                  disabled={cartItems.length === 0}
+                  variant="primary"
+                >
+                  <DollarSign className="mr-2 h-4 w-4" />
                   PAGAR COM DINHEIRO - F1
                 </ActionButton>
-                <ActionButton onClick={cancelSale}>
+                <ActionButton 
+                  onClick={cancelSale}
+                  disabled={cartItems.length === 0}
+                  variant="danger"
+                >
+                  <X className="mr-2 h-4 w-4" />
                   CANCELAR VENDA - F2
                 </ActionButton>
-                 <ActionButton onClick={() => handleSimplePayment('PIX')}>
+                 <ActionButton 
+                  onClick={() => handleSimplePayment('PIX')}
+                  disabled={cartItems.length === 0}
+                  variant="secondary"
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
                   PAGAR COM PIX - F3
                 </ActionButton>
-                <ActionButton onClick={() => handleOpenFinalizeDialog('prazo')}>
+                <ActionButton 
+                  onClick={() => handleOpenFinalizeDialog('prazo')}
+                  disabled={cartItems.length === 0}
+                  variant="primary"
+                >
+                  <User className="mr-2 h-4 w-4" />
                   VENDER A PRAZO - F4
                 </ActionButton>
                 <ActionButton
                   onClick={() => handleOpenFinalizeDialog('parcelado')}
+                  disabled={cartItems.length === 0}
+                  variant="primary"
                 >
+                  <Package className="mr-2 h-4 w-4" />
                   VENDER PARCELADO - F5
                 </ActionButton>
-                <ActionButton onClick={handleLogout}>
+                <ActionButton onClick={handleLogout} variant="danger">
                   SAIR DO P.D.V - ESC
                 </ActionButton>
               </div>
@@ -661,6 +835,30 @@ export default function PdvPage() {
           </div>
         </div>
       </div>
+      
+      <InstructionsModal 
+        isOpen={isInstructionsModalOpen} 
+        onClose={() => setIsInstructionsModalOpen(false)} 
+      />
+      <CalculatorModal 
+        isOpen={isCalculatorModalOpen} 
+        onClose={() => setIsCalculatorModalOpen(false)} 
+      />
+      <NFeEmissionDialog
+        isOpen={isNFeDialogOpen}
+        onOpenChange={setIsNFeDialogOpen}
+        cartItems={lastSaleItems}
+        total={lastSaleItems.reduce((acc, item) => acc + (item.product.salePrice * item.quantity - item.discount), 0)}
+        customer={null}
+        paymentMethod="Dinheiro"
+        onSaleComplete={(nfeResult) => {
+          setLastNFeResult(nfeResult);
+          toast({
+            title: 'NF-e Emitida com Sucesso!',
+            description: `Chave: ${nfeResult.chave?.slice(0, 20)}...`,
+          });
+        }}
+      />
     </>
   );
 }
@@ -678,11 +876,11 @@ function InfoBox({
 }) {
   return (
     <div
-      className={`rounded-lg border-2 border-black bg-white p-2 text-black ${
+      className={`rounded-lg border-2 border-blue-200 bg-white p-2 text-blue-900 shadow-sm ${
         center ? 'text-center' : ''
       }`}
     >
-      <p className="text-xs">{label}</p>
+      <p className="text-xs text-blue-700 font-medium">{label}</p>
       <p className={`${smallText ? 'text-lg' : 'text-3xl'} font-bold`}>
         {value}
       </p>
@@ -693,14 +891,26 @@ function InfoBox({
 function ActionButton({
   children,
   onClick,
+  disabled = false,
+  variant = 'primary',
 }: {
   children: React.ReactNode;
   onClick?: () => void;
+  disabled?: boolean;
+  variant?: 'primary' | 'secondary' | 'danger';
 }) {
+  const baseClasses = "w-full justify-center py-3 text-base text-white transition-all duration-200 shadow-sm hover:shadow-md";
+  const variantClasses = {
+    primary: "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:text-blue-100",
+    secondary: "bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 disabled:text-emerald-100", 
+    danger: "bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 disabled:text-rose-100"
+  };
+  
   return (
     <Button
-      className="w-full justify-center bg-blue-600 py-3 text-base text-white hover:bg-blue-700"
+      className={`${baseClasses} ${variantClasses[variant]} rounded-lg`}
       onClick={onClick}
+      disabled={disabled}
     >
       {children}
     </Button>
