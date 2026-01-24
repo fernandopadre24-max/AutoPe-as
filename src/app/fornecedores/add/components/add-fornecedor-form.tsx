@@ -73,7 +73,6 @@ export function AddFornecedorForm() {
             title: 'Erro',
             description: 'Não foi possível adicionar o fornecedor.',
         });
-        console.error("Error adding supplier:", error);
     }
   }
 

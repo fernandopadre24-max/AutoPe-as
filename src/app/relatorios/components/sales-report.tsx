@@ -193,7 +193,7 @@ export function SalesReport({
             if (sale.status === 'Pago') {
                 sale.items.forEach(item => {
                     const product = products.find(p => p.id === item.productId);
-                    if (product) {
+                    if (product && product.category) {
                         const currentTotal = categoryMap.get(product.category) || 0;
                         categoryMap.set(product.category, currentTotal + (item.unitPrice * item.quantity - item.discount));
                     }

@@ -1,18 +1,38 @@
 
 
+export type Category = {
+  id: string;
+  name: string;
+  color: string;
+  created_at: Date;
+};
+
 export type Product = {
   id: string;
   name: string;
   sku: string;
   stock: number;
+  minStock: number;
   purchasePrice: number;
   salePrice: number;
-  category: string;
+  categoryId?: string;
+  category?: string; // For backward compatibility
   size: string;
   color: string;
   gender: 'Masculino' | 'Feminino' | 'Unissex';
   supplierId?: string;
   description: string;
+  // Campos fiscais para NF-e
+  ncm?: string;
+  cfop?: string;
+  cest?: string;
+  origem?: number; // 0= Nacional, 1=Importado, etc
+  icmsCst?: string;
+  icmsAliquota?: number;
+  pisCst?: string;
+  pisAliquota?: number;
+  cofinsCst?: string;
+  cofinsAliquota?: number;
 };
 
 export type RecentSale = {
@@ -32,6 +52,9 @@ export type Customer = {
   email: string;
   phoneNumber?: string;
   address?: string;
+  cpf?: string;
+  birthDate?: string;
+  sex?: 'Masculino' | 'Feminino' | 'Outro';
   createdAt: string;
   updatedAt: string;
 };
@@ -87,9 +110,13 @@ export type Sale = {
     cardNumber?: string;
 };
 
+export type PixKeyType = 'email' | 'cpf' | 'cnpj' | 'telefone' | 'aleatoria';
+
 export type StoreConfig = {
   storeName: string;
   cnpj?: string;
   address?: string;
   phone?: string;
+  pixKeyType?: PixKeyType;
+  pixKeyValue?: string;
 };

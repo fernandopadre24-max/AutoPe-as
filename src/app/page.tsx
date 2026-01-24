@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useData } from '@/lib/data';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { Sale } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import React from 'react';
@@ -49,6 +49,11 @@ const formatPaymentMethod = (sale: Sale) => {
 
 export default function Home() {
   const { sales, products, customers, employees, confirmPayment } = useData();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const { toast } = useToast();
   const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
 
@@ -73,9 +78,10 @@ export default function Home() {
     });
   };
 
-  const recentSales = useMemo(() => sales.slice(0, 10), [sales]);
+  const recentSales = useMemo(() => mounted ? sales.slice(0, 10) : [], [sales, mounted]);
   
   const groupedSales = useMemo(() => {
+    if (!mounted) return {};
     return recentSales.reduce((acc, sale) => {
         if (!acc[sale.employeeId]) {
             acc[sale.employeeId] = [];
@@ -83,12 +89,15 @@ export default function Home() {
         acc[sale.employeeId].push(sale);
         return acc;
     }, {} as Record<string, Sale[]>);
-  }, [recentSales]);
+  }, [recentSales, mounted]);
 
-  const totalRevenue = useMemo(() => sales.filter(s => s.status === 'Pago').reduce((acc, sale) => acc + sale.total, 0), [sales]);
-  const pendingAmount = useMemo(() => sales.filter(s => s.status === 'Pendente').reduce((acc, sale) => acc + sale.total, 0), [sales]);
-  const recentSalesTotal = useMemo(() => recentSales.reduce((acc, sale) => acc + sale.total, 0), [recentSales]);
-  const totalProducts = useMemo(() => products.reduce((acc, product) => acc + product.stock, 0), [products]);
+  const totalRevenue = useMemo(() => mounted ? sales.filter(s => s.status === 'Pago').reduce((acc, sale) => acc + sale.total, 0) : 0, [sales, mounted]);
+  const pendingAmount = useMemo(() => mounted ? sales.filter(s => s.status === 'Pendente').reduce((acc, sale) => acc + sale.total, 0) : 0, [sales, mounted]);
+  const recentSalesTotal = useMemo(() => mounted ? recentSales.reduce((acc, sale) => acc + sale.total, 0) : 0, [recentSales, mounted]);
+  const totalProducts = useMemo(() => mounted ? products.reduce((acc, product) => acc + product.stock, 0) : 0, [products, mounted]);
+  const pendingCount = useMemo(() => mounted ? sales.filter(s => s.status === 'Pendente').length : 0, [sales, mounted]);
+  const recentCount = useMemo(() => mounted ? recentSales.length : 0, [recentSales, mounted]);
+  const todaySalesCount = useMemo(() => mounted ? sales.filter(s => new Date(s.date).toDateString() === new Date().toDateString()).length : 0, [sales, mounted]);
 
   let lastEmployeeId: string | null = null;
 
@@ -102,7 +111,9 @@ export default function Home() {
             <DollarSign className="h-4 w-4 text-white" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+            <div className="text-2xl font-bold">
+              {mounted ? totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
+            </div>
             <p className="text-xs text-emerald-100">+20.1% em relação ao mês passado</p>
           </CardContent>
         </Card>
@@ -112,8 +123,10 @@ export default function Home() {
             <Hourglass className="h-4 w-4 text-white" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pendingAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-            <p className="text-xs text-amber-100">{sales.filter(s => s.status === 'Pendente').length} vendas pendentes</p>
+            <div className="text-2xl font-bold">
+              {mounted ? pendingAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
+            </div>
+            <p className="text-xs text-amber-100">{pendingCount} vendas pendentes</p>
           </CardContent>
         </Card>
         <Card className="bg-blue-500 text-white">
@@ -122,8 +135,10 @@ export default function Home() {
             <Users className="h-4 w-4 text-white" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{customers.length}</div>
-            <p className="text-xs text-blue-100">+180.1% em relação ao mês passado</p>
+            <div className="text-2xl font-bold">
+              {mounted ? recentSalesTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
+            </div>
+            <p className="text-xs text-blue-100">{recentCount} vendas recentes</p>
           </CardContent>
         </Card>
         <Card className="bg-purple-500 text-white">
@@ -132,7 +147,7 @@ export default function Home() {
             <ShoppingCart className="h-4 w-4 text-white" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{sales.filter(s => new Date(s.date).toDateString() === new Date().toDateString()).length}</div>
+            <div className="text-2xl font-bold">+{todaySalesCount}</div>
             <p className="text-xs text-purple-100">+19% em relação a ontem</p>
           </CardContent>
         </Card>
@@ -237,13 +252,13 @@ export default function Home() {
                   </React.Fragment>
                 )
               })}
-              {recentSales.length === 0 && (
+              {!mounted || recentCount === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">Nenhuma venda recente.</TableCell>
                 </TableRow>
               )}
             </TableBody>
-            {recentSales.length > 0 && (
+            {mounted && recentCount > 0 && (
               <TableFooter>
                 <TableRow className="border-t border-dashed border-gray-400 hover:bg-yellow-100">
                   <TableCell colSpan={6} className="text-right font-bold py-2 px-4">Total Geral</TableCell>

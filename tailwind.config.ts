@@ -7,6 +7,14 @@ export default {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  // Otimizações para produção
+  safelist: [
+    // Classes críticas que podem ser usadas dinamicamente
+    'hidden',
+    'block',
+    'flex',
+    'grid',
+  ],
   theme: {
     container: {
       center: true,

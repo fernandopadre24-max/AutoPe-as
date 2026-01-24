@@ -20,7 +20,14 @@ import { useData } from '@/lib/data';
 import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFormStatus } from 'react-dom';
-import { formatPhoneNumber } from '@/lib/utils';
+import { formatPhoneNumber, formatCPF, validateCPF } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const formSchema = z.object({
   firstName: z
@@ -32,6 +39,9 @@ const formSchema = z.object({
   email: z.string().email({ message: 'Insira um email válido.' }),
   phoneNumber: z.string().optional(),
   address: z.string().optional(),
+  cpf: z.string().optional(),
+  birthDate: z.string().optional(),
+  sex: z.enum(['Masculino', 'Feminino', 'Outro']).optional(),
 });
 
 type EditClienteFormProps = {
@@ -63,6 +73,9 @@ export function EditClienteForm({ customerId }: EditClienteFormProps) {
       email: '',
       phoneNumber: '',
       address: '',
+      cpf: '',
+      birthDate: '',
+      sex: undefined,
     },
   });
 
@@ -71,6 +84,7 @@ export function EditClienteForm({ customerId }: EditClienteFormProps) {
       form.reset({
         ...customer,
         phoneNumber: customer.phoneNumber ? formatPhoneNumber(customer.phoneNumber) : '',
+        cpf: customer.cpf ? formatCPF(customer.cpf) : '',
       });
     }
   }, [customer, form]);
@@ -83,6 +97,7 @@ export function EditClienteForm({ customerId }: EditClienteFormProps) {
         ...values,
         phoneNumber: values.phoneNumber?.replace(/\D/g, '') || '',
         address: values.address || '',
+        cpf: values.cpf?.replace(/\D/g, '') || '',
       });
       toast({
         title: 'Sucesso!',
@@ -95,7 +110,6 @@ export function EditClienteForm({ customerId }: EditClienteFormProps) {
         title: 'Erro',
         description: 'Não foi possível atualizar os dados do cliente.',
       });
-      console.error('Error updating customer:', error);
     }
   }
 
@@ -184,6 +198,63 @@ export function EditClienteForm({ customerId }: EditClienteFormProps) {
                     value={field.value || ''}
                   />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="cpf"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>CPF *</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="000.000.000-00" 
+                    {...field}
+                    onChange={(e) => field.onChange(formatCPF(e.target.value))}
+                    value={field.value || ''}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="birthDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Data de Nascimento</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="date"
+                    {...field}
+                    value={field.value || ''}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="sex"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Sexo</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="Masculino">Masculino</SelectItem>
+                    <SelectItem value="Feminino">Feminino</SelectItem>
+                    <SelectItem value="Outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}

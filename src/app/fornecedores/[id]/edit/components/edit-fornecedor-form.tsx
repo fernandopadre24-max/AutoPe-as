@@ -92,7 +92,6 @@ export function EditFornecedorForm({ supplierId }: EditFornecedorFormProps) {
         title: 'Erro',
         description: 'Não foi possível atualizar os dados do fornecedor.',
       });
-      console.error('Error updating supplier:', error);
     }
   }
 

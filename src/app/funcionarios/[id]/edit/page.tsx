@@ -2,17 +2,19 @@ import { PageHeader } from '@/components/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { EditFuncionarioForm } from './components/edit-funcionario-form';
 
-export default function EditFuncionarioPage({
+export default async function EditFuncionarioPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
+  
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="Editar Funcionário" />
       <Card>
         <CardContent className="pt-6">
-          <EditFuncionarioForm employeeId={params.id} />
+          <EditFuncionarioForm employeeId={id} />
         </CardContent>
       </Card>
     </div>

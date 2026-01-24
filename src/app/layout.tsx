@@ -1,73 +1,26 @@
-'use client';
 import './globals.css';
-import { MainLayout } from '@/components/layout/main-layout';
-import { Toaster } from '@/components/ui/toaster';
-import { DataProvider, useData } from '@/lib/data';
-import { useEffect } from 'react';
-import { ThemeProvider } from 'next-themes';
-import { useRouter, usePathname } from 'next/navigation';
-
-function AppDynamicTitle() {
-  const { config } = useData();
-
-  useEffect(() => {
-    if (config.storeName) {
-      document.title = config.storeName;
-    } else {
-      document.title = 'Fashion Store';
-    }
-  }, [config.storeName]);
-
-  return null;
-}
-
-function PDVLayout({ children }: { children: React.ReactNode }) {
-    const { authenticatedEmployee } = useData();
-    const router = useRouter();
-    const pathname = usePathname();
-
-    useEffect(() => {
-        if(pathname === '/pdv' && !authenticatedEmployee) {
-            // router.push('/');
-        }
-    }, [authenticatedEmployee, router, pathname]);
-
-    return <>{children}</>;
-}
-
+import { RootLayoutClient } from './root-layout-client';
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = usePathname();
-  const isPdvPage = pathname === '/pdv';
-
-  const LayoutComponent = isPdvPage ? PDVLayout : MainLayout;
-
-
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=PT+Sans:wght@400;700&display=swap"
+          rel="stylesheet"
+          precedence="default"
+        />
       </head>
       <body className="font-body antialiased">
-        <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-        >
-          <DataProvider>
-            <AppDynamicTitle />
-            <LayoutComponent>{children}</LayoutComponent>
-          </DataProvider>
-        </ThemeProvider>
-        <Toaster />
+        <RootLayoutClient>
+          {children}
+        </RootLayoutClient>
       </body>
     </html>
   );
